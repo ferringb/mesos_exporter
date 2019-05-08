@@ -13,6 +13,9 @@ import (
 type (
 	slave struct {
 		PID        string                     `json:"pid"`
+		Hostname   string                     `json:"hostname"`
+		Id         string                     `json:"id"`
+		Port       uint32                     `json:"port"`
 		Used       resources                  `json:"used_resources"`
 		Unreserved resources                  `json:"unreserved_resources"`
 		Total      resources                  `json:"resources"`
@@ -37,7 +40,7 @@ type (
 )
 
 func newMasterStateCollector(httpClient *httpClient, slaveAttributeLabels []string) prometheus.Collector {
-	labels := []string{"slave"}
+	labels := []string{"slave", "hostname", "port", "id"}
 	metrics := map[prometheus.Collector]func(*state, prometheus.Collector){
 		prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Help:      "Total slave CPUs (fractional)",
@@ -46,7 +49,7 @@ func newMasterStateCollector(httpClient *httpClient, slaveAttributeLabels []stri
 			Name:      "cpus",
 		}, labels): func(st *state, c prometheus.Collector) {
 			for _, s := range st.Slaves {
-				c.(*prometheus.GaugeVec).WithLabelValues(s.PID).Set(s.Total.CPUs)
+				c.(*prometheus.GaugeVec).WithLabelValues(s.PID, s.Hostname, fmt.Sprintf("%d", s.Port), s.Id).Set(s.Total.CPUs)
 			}
 		},
 		prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -56,7 +59,7 @@ func newMasterStateCollector(httpClient *httpClient, slaveAttributeLabels []stri
 			Name:      "cpus_used",
 		}, labels): func(st *state, c prometheus.Collector) {
 			for _, s := range st.Slaves {
-				c.(*prometheus.GaugeVec).WithLabelValues(s.PID).Set(s.Used.CPUs)
+				c.(*prometheus.GaugeVec).WithLabelValues(s.PID, s.Hostname, fmt.Sprintf("%d", s.Port), s.Id).Set(s.Used.CPUs)
 			}
 		},
 		prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -66,7 +69,7 @@ func newMasterStateCollector(httpClient *httpClient, slaveAttributeLabels []stri
 			Name:      "cpus_unreserved",
 		}, labels): func(st *state, c prometheus.Collector) {
 			for _, s := range st.Slaves {
-				c.(*prometheus.GaugeVec).WithLabelValues(s.PID).Set(s.Unreserved.CPUs)
+				c.(*prometheus.GaugeVec).WithLabelValues(s.PID, s.Hostname, fmt.Sprintf("%d", s.Port), s.Id).Set(s.Unreserved.CPUs)
 			}
 		},
 		prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -76,7 +79,7 @@ func newMasterStateCollector(httpClient *httpClient, slaveAttributeLabels []stri
 			Name:      "mem_bytes",
 		}, labels): func(st *state, c prometheus.Collector) {
 			for _, s := range st.Slaves {
-				c.(*prometheus.GaugeVec).WithLabelValues(s.PID).Set(s.Total.Mem * 1024)
+				c.(*prometheus.GaugeVec).WithLabelValues(s.PID, s.Hostname, fmt.Sprintf("%d", s.Port), s.Id).Set(s.Total.Mem * 1024)
 			}
 		},
 		prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -86,7 +89,7 @@ func newMasterStateCollector(httpClient *httpClient, slaveAttributeLabels []stri
 			Name:      "mem_used_bytes",
 		}, labels): func(st *state, c prometheus.Collector) {
 			for _, s := range st.Slaves {
-				c.(*prometheus.GaugeVec).WithLabelValues(s.PID).Set(s.Used.Mem * 1024)
+				c.(*prometheus.GaugeVec).WithLabelValues(s.PID, s.Hostname, fmt.Sprintf("%d", s.Port), s.Id).Set(s.Used.Mem * 1024)
 			}
 		},
 		prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -96,7 +99,7 @@ func newMasterStateCollector(httpClient *httpClient, slaveAttributeLabels []stri
 			Name:      "mem_unreserved_bytes",
 		}, labels): func(st *state, c prometheus.Collector) {
 			for _, s := range st.Slaves {
-				c.(*prometheus.GaugeVec).WithLabelValues(s.PID).Set(s.Unreserved.Mem * 1024)
+				c.(*prometheus.GaugeVec).WithLabelValues(s.PID, s.Hostname, fmt.Sprintf("%d", s.Port), s.Id).Set(s.Unreserved.Mem * 1024)
 			}
 		},
 		prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -106,7 +109,7 @@ func newMasterStateCollector(httpClient *httpClient, slaveAttributeLabels []stri
 			Name:      "disk_bytes",
 		}, labels): func(st *state, c prometheus.Collector) {
 			for _, s := range st.Slaves {
-				c.(*prometheus.GaugeVec).WithLabelValues(s.PID).Set(s.Total.Disk * 1024)
+				c.(*prometheus.GaugeVec).WithLabelValues(s.PID, s.Hostname, fmt.Sprintf("%d", s.Port), s.Id).Set(s.Total.Disk * 1024)
 			}
 		},
 		prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -116,7 +119,7 @@ func newMasterStateCollector(httpClient *httpClient, slaveAttributeLabels []stri
 			Name:      "disk_used_bytes",
 		}, labels): func(st *state, c prometheus.Collector) {
 			for _, s := range st.Slaves {
-				c.(*prometheus.GaugeVec).WithLabelValues(s.PID).Set(s.Used.Disk * 1024)
+				c.(*prometheus.GaugeVec).WithLabelValues(s.PID, s.Hostname, fmt.Sprintf("%d", s.Port), s.Id).Set(s.Used.Disk * 1024)
 			}
 		},
 		prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -126,7 +129,7 @@ func newMasterStateCollector(httpClient *httpClient, slaveAttributeLabels []stri
 			Name:      "disk_unreserved_bytes",
 		}, labels): func(st *state, c prometheus.Collector) {
 			for _, s := range st.Slaves {
-				c.(*prometheus.GaugeVec).WithLabelValues(s.PID).Set(s.Unreserved.Disk * 1024)
+				c.(*prometheus.GaugeVec).WithLabelValues(s.PID, s.Hostname, fmt.Sprintf("%d", s.Port), s.Id).Set(s.Unreserved.Disk * 1024)
 			}
 		},
 		prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -137,7 +140,7 @@ func newMasterStateCollector(httpClient *httpClient, slaveAttributeLabels []stri
 		}, labels): func(st *state, c prometheus.Collector) {
 			for _, s := range st.Slaves {
 				size := s.Total.Ports.size()
-				c.(*prometheus.GaugeVec).WithLabelValues(s.PID).Set(float64(size))
+				c.(*prometheus.GaugeVec).WithLabelValues(s.PID, s.Hostname, fmt.Sprintf("%d", s.Port), s.Id).Set(float64(size))
 			}
 		},
 		prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -148,7 +151,7 @@ func newMasterStateCollector(httpClient *httpClient, slaveAttributeLabels []stri
 		}, labels): func(st *state, c prometheus.Collector) {
 			for _, s := range st.Slaves {
 				size := s.Used.Ports.size()
-				c.(*prometheus.GaugeVec).WithLabelValues(s.PID).Set(float64(size))
+				c.(*prometheus.GaugeVec).WithLabelValues(s.PID, s.Hostname, fmt.Sprintf("%d", s.Port), s.Id).Set(float64(size))
 			}
 		},
 		prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -159,7 +162,7 @@ func newMasterStateCollector(httpClient *httpClient, slaveAttributeLabels []stri
 		}, labels): func(st *state, c prometheus.Collector) {
 			for _, s := range st.Slaves {
 				size := s.Unreserved.Ports.size()
-				c.(*prometheus.GaugeVec).WithLabelValues(s.PID).Set(float64(size))
+				c.(*prometheus.GaugeVec).WithLabelValues(s.PID, s.Hostname, fmt.Sprintf("%d", s.Port), s.Id).Set(float64(size))
 			}
 		},
 	}
