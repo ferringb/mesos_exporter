@@ -9,6 +9,17 @@ import (
 )
 
 func newMasterCollector(httpClient *httpClient) prometheus.Collector {
+	framework_re := regexp.MustCompile(`^master/frameworks/(?P<name>[^/]+)/(?P<id>[^/]+)/(?P<type>[^/]+)(?:/(?P<subtype>.+$))?`)
+
+	visitFrameworkMatches := func(m metricMap, visitor func(string, string, string, string, float64)) {
+		for key, value := range m {
+			match := framework_re.FindStringSubmatch(key)
+			if match != nil {
+				visitor(match[1], match[2], match[3], match[4], value)
+			}
+		}
+	}
+
 	metrics := map[prometheus.Collector]func(metricMap, prometheus.Collector) error{
 		// CPU/Disk/Mem resources in free/used
 		gauge("master", "cpus", "Current CPU resources in cluster.", "type"): func(m metricMap, c prometheus.Collector) error {
@@ -1111,8 +1122,78 @@ func newMasterCollector(httpClient *httpClient) prometheus.Collector {
 			c.(prometheus.Gauge).Set(size)
 			return nil
 		},
-
+		gauge("framework", "active", "1 if a framework is active, 0 if not", "framework_name", "framework_id"): func(m metricMap, c prometheus.Collector) error {
+			visitFrameworkMatches(m,
+				func(framework string, framework_id string, type1 string, type2 string, value float64) {
+					if type1 == "subscribed" && type2 == "" {
+						c.(*prometheus.GaugeVec).WithLabelValues(framework, framework_id).Set(value)
+					}
+				},
+			)
+			return nil
+		},
+		gauge("framework", "call_count", "Number of master calls per framework", "framework_name", "framework_id", "type"): func(m metricMap, c prometheus.Collector) error {
+			visitFrameworkMatches(m,
+				func(framework string, framework_id string, type1 string, type2 string, value float64) {
+					if type1 == "calls" && type2 != "" {
+						c.(*prometheus.GaugeVec).WithLabelValues(framework, framework_id, type2).Set(value)
+					}
+				},
+			)
+			return nil
+		},
+		gauge("framework", "event_count", "Number of events per framework", "framework_name", "framework_id", "event"): func(m metricMap, c prometheus.Collector) error {
+			visitFrameworkMatches(m,
+				func(framework string, framework_id string, type1 string, type2 string, value float64) {
+					if type1 == "events" && type2 != "" {
+						c.(*prometheus.GaugeVec).WithLabelValues(framework, framework_id, type2).Set(value)
+					}
+				},
+			)
+			return nil
+		},
+		gauge("framework", "operation_count", "Number of operations per framework", "framework_name", "framework_id", "operation"): func(m metricMap, c prometheus.Collector) error {
+			visitFrameworkMatches(m,
+				func(framework string, framework_id string, type1 string, type2 string, value float64) {
+					if type1 == "operations" && type2 != "" {
+						c.(*prometheus.GaugeVec).WithLabelValues(framework, framework_id, type2).Set(value)
+					}
+				},
+			)
+			return nil
+		},
+		gauge("framework", "offer_count", "Offer counts per framework", "framework_name", "framework_id", "type"): func(m metricMap, c prometheus.Collector) error {
+			visitFrameworkMatches(m,
+				func(framework string, framework_id string, type1 string, type2 string, value float64) {
+					if type1 == "offers" {
+						c.(*prometheus.GaugeVec).WithLabelValues(framework, framework_id, type2).Set(value)
+					}
+				},
+			)
+			return nil
+		},
+		gauge("framework", "tasks_active_states", "State of active tasks per", "framework_name", "framework_id", "state"): func(m metricMap, c prometheus.Collector) error {
+			visitFrameworkMatches(m,
+				func(framework string, framework_id string, type1 string, type2 string, value float64) {
+					if type1 == "tasks/active" {
+						c.(*prometheus.GaugeVec).WithLabelValues(framework, framework_id, type2).Set(value)
+					}
+				},
+			)
+			return nil
+		},
+		gauge("framework", "tasks_exit_counts", "Counts of why tasks exited per framework", "framework_name", "framework_id", "reasons"): func(m metricMap, c prometheus.Collector) error {
+			visitFrameworkMatches(m,
+				func(framework string, framework_id string, type1 string, type2 string, value float64) {
+					if type1 == "tasks/terminal" {
+						c.(*prometheus.GaugeVec).WithLabelValues(framework, framework_id, type2).Set(value)
+					}
+				},
+			)
+			return nil
+		},
 		// END
 	}
+
 	return newMetricCollector(httpClient, metrics)
 }
