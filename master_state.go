@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
 
 type (
@@ -202,7 +201,6 @@ func newMasterStateCollector(httpClient *httpClient, slaveAttributeLabels []stri
 
 func (c *masterCollector) Collect(ch chan<- prometheus.Metric) {
 	var s state
-	log.WithField("url", "/state").Debug("fetching URL")
 	c.fetchAndDecode("/state", &s)
 
 	for c, set := range c.metrics {

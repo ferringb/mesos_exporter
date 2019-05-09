@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
 
 type (
@@ -120,7 +119,6 @@ func newSlaveStateCollector(httpClient *httpClient, userTaskLabelList []string, 
 
 func (c *slaveStateCollector) Collect(ch chan<- prometheus.Metric) {
 	var s slaveState
-	log.WithField("url", "/slave(1)/state").Debug("fetching URL")
 	c.fetchAndDecode("/slave(1)/state", &s)
 	for d, cm := range c.metrics {
 		for _, m := range cm.value(&s) {

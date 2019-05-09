@@ -20,7 +20,7 @@ func newMasterCollector(httpClient *httpClient) prometheus.Collector {
 		}
 	}
 
-	metrics := map[prometheus.Collector]func(metricMap, prometheus.Collector) error{
+	metrics := map[prometheus.Collector]metricsCollectorFunctor{
 		// CPU/Disk/Mem resources in free/used
 		gauge("master", "cpus", "Current CPU resources in cluster.", "type"): func(m metricMap, c prometheus.Collector) error {
 			percent, ok := m["master/cpus_percent"]
@@ -1195,5 +1195,5 @@ func newMasterCollector(httpClient *httpClient) prometheus.Collector {
 		// END
 	}
 
-	return newMetricCollector(httpClient, metrics)
+	return newStandardCollector(httpClient, metrics)
 }

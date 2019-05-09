@@ -62,7 +62,36 @@ type (
 	}
 )
 
+type groupedCollector struct {
+	Collectors []prometheus.Collector
+}
+
+func newGroupedCollector(collectors ...prometheus.Collector) prometheus.Collector {
+	return &groupedCollector{Collectors: collectors}
+}
+
+func (c *groupedCollector) Describe(ch chan<- *prometheus.Desc) {
+	for _, collector := range c.Collectors {
+		collector.Describe(ch)
+	}
+}
+
+func (c *groupedCollector) Collect(ch chan<- prometheus.Metric) {
+	for _, collector := range c.Collectors {
+		collector.Collect(ch)
+	}
+}
+
+func newStandardCollector(httpClient *httpClient, metrics map[prometheus.Collector]metricsCollectorFunctor) prometheus.Collector {
+	return newGroupedCollector(
+		newMetricCollector(httpClient, metrics),
+		newVersionCollector(httpClient),
+	)
+}
+
 type metricMap map[string]float64
+
+type metricsCollectorFunctor func(metricMap, prometheus.Collector) error
 
 const LogErrNotFoundInMap = "Couldn't find key in map"
 
@@ -163,12 +192,52 @@ type httpClient struct {
 	userAgent string
 }
 
-type metricCollector struct {
+type versionCollector struct {
 	*httpClient
-	metrics map[prometheus.Collector]func(metricMap, prometheus.Collector) error
+	metric *prometheus.GaugeVec
 }
 
-func newMetricCollector(httpClient *httpClient, metrics map[prometheus.Collector]func(metricMap, prometheus.Collector) error) prometheus.Collector {
+func newVersionCollector(httpclient *httpClient) prometheus.Collector {
+	// example data
+	// "build_date": "2019-05-02 18:38:30",
+	// "build_time": 1556822310,
+	// "build_user": "foon",
+	// "git_sha": "58cc918e9acc2865bb07047d3d2dff156d1708b2",
+	// "git_tag": "1.7.2",
+	// "version": "1.7.2"
+	labels := []string{"build_date", "build_time", "git_sha", "git_tag", "version"}
+	return &versionCollector{
+		httpclient,
+		gauge("", "version", "Version information for the mesos slave/master stored in labeling", labels...),
+	}
+}
+
+type versionFields struct {
+	BuildDate string  `json:"build_date,omitempty"`
+	BuildTime float64 `json:"build_time,omitempty"`
+	GitSHA    string  `json:"git_sha,omitempty"`
+	GitTag    string  `json:"git_tag,omitempty"`
+	Version   string  `json:"version,omitempty"`
+}
+
+func (v *versionCollector) Collect(ch chan<- prometheus.Metric) {
+	var vf versionFields
+	if v.fetchAndDecode("/version", &vf) {
+		v.metric.WithLabelValues(vf.BuildDate, fmt.Sprintf("%f", vf.BuildTime), vf.GitSHA, vf.GitTag, vf.Version).Set(1)
+		v.metric.Collect(ch)
+	}
+}
+
+func (v *versionCollector) Describe(ch chan<- *prometheus.Desc) {
+	v.metric.Describe(ch)
+}
+
+type metricCollector struct {
+	*httpClient
+	metrics map[prometheus.Collector]metricsCollectorFunctor
+}
+
+func newMetricCollector(httpClient *httpClient, metrics map[prometheus.Collector]metricsCollectorFunctor) prometheus.Collector {
 	return &metricCollector{httpClient, metrics}
 }
 
@@ -289,7 +358,6 @@ func (httpClient *httpClient) fetchAndDecode(endpoint string, target interface{}
 
 func (c *metricCollector) Collect(ch chan<- prometheus.Metric) {
 	var m metricMap
-	log.WithField("url", "/metrics/snapshot").Debug("fetching URL")
 	c.fetchAndDecode("/metrics/snapshot", &m)
 	for cm, f := range c.metrics {
 		if err := f(m, cm); err != nil {

@@ -9,7 +9,7 @@ import (
 )
 
 func newSlaveCollector(httpClient *httpClient) prometheus.Collector {
-	metrics := map[prometheus.Collector]func(metricMap, prometheus.Collector) error{
+	metrics := map[prometheus.Collector]metricsCollectorFunctor{
 		// CPU/Disk/Mem resources in free/used
 		gauge("slave", "cpus", "Current CPU resources in cluster.", "type"): func(m metricMap, c prometheus.Collector) error {
 			percent, ok := m["slave/cpus_percent"]
@@ -527,5 +527,5 @@ func newSlaveCollector(httpClient *httpClient) prometheus.Collector {
 
 		// END
 	}
-	return newMetricCollector(httpClient, metrics)
+	return newStandardCollector(httpClient, metrics)
 }
