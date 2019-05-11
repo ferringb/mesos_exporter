@@ -28,6 +28,7 @@ type (
 		ID          string    `json:"id"`
 		ExecutorID  string    `json:"executor_id"`
 		FrameworkID string    `json:"framework_id"`
+		Role        string    `json:"role"`
 		SlaveID     string    `json:"slave_id"`
 		State       string    `json:"state"`
 		Labels      []label   `json:"labels"`

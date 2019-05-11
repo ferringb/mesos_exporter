@@ -15,6 +15,7 @@ type (
 	slaveState struct {
 		Attributes map[string]json.RawMessage `json:"attributes"`
 		Frameworks []slaveFramework           `json:"frameworks"`
+		ID string                             `json:"id"`
 	}
 	slaveFramework struct {
 		ID        string               `json:"ID"`
@@ -88,7 +89,7 @@ func newSlaveStateCollector(httpClient *httpClient, userTaskLabelList []string, 
 	}
 
 	if len(slaveAttributeLabelList) > 0 {
-		normalisedAttributeLabels := normaliseLabelList(slaveAttributeLabelList)
+		normalisedAttributeLabels := append(normaliseLabelList(slaveAttributeLabelList), "id")
 
 		c.metrics[prometheus.NewDesc(
 			prometheus.BuildFQName("mesos", "slave", "attributes"),
@@ -101,6 +102,7 @@ func newSlaveStateCollector(httpClient *httpClient, userTaskLabelList []string, 
 				for _, label := range normalisedAttributeLabels {
 					slaveAttributes[label] = ""
 				}
+				slaveAttributes["id"] = st.ID
 				for key, value := range st.Attributes {
 					normalisedLabel := normaliseLabel(key)
 					if stringInSlice(normalisedLabel, normalisedAttributeLabels) {
